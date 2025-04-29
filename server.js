@@ -7,9 +7,18 @@ const rateLimit = require('express-rate-limit');
 const apiRoutes = require('./routes/api');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
+const dataRoutes = require('./routes/data');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Configuration CORS plus permissive pour le développement
+const corsOptions = {
+    origin: '*', // Permettre toutes les origines en développement
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+};
 
 // Configuration du rate limiter
 const limiter = rateLimit({
@@ -18,8 +27,10 @@ const limiter = rateLimit({
 });
 
 // Middlewares de sécurité
-app.use(helmet()); // Sécurité des en-têtes HTTP
-app.use(cors()); // Protection CORS
+app.use(helmet({
+    crossOriginResourcePolicy: false // Désactive les restrictions CORS
+}));
+app.use(cors(corsOptions)); // Protection CORS avec options personnalisées
 app.use(limiter); // Rate limiting
 app.use(bodyParser.json()); // Parser pour JSON
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -27,6 +38,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Middleware pour logger les requêtes
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
     next();
 });
 
@@ -34,6 +47,7 @@ app.use((req, res, next) => {
 app.use('/api', apiRoutes);
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
+app.use('/data', dataRoutes);
 
 // Route de base
 app.get('/', (req, res) => {
@@ -42,8 +56,8 @@ app.get('/', (req, res) => {
 
 // Middleware de gestion des erreurs
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ 
+    console.error('Erreur:', err.stack);
+    res.status(500).json({
         error: 'Une erreur est survenue !',
         message: process.env.NODE_ENV === 'development' ? err.message : 'Erreur interne du serveur'
     });
@@ -51,9 +65,13 @@ app.use((err, req, res, next) => {
 
 // Gestion des routes non trouvées
 app.use((req, res) => {
+    console.log('Route non trouvée:', req.path);
     res.status(404).json({ error: 'Route non trouvée' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Serveur démarré sur le port ${PORT}`);
-}); 
+    console.log(`URL locale : http://localhost:${PORT}`);
+    console.log(`URL réseau : http://192.168.11.101:${PORT}`);
+});
+
